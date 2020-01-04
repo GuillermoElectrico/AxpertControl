@@ -2,23 +2,13 @@
 
 # Axpert Inverter control script
 
-# Read values from inverter, sends values to emonCMS,
-# read electric low or high tarif from emonCMS and setting charger and mode to hold batteries fully charged
-# controls grid charging current to meet circuit braker maximum alloweble grid current(power)
+# switch mode to electric low or high tarif 
 # calculation of CRC is done by XMODEM mode, but in firmware is wierd mistake in POP02 command, so exception of calculation is done in serial_command(command) function
 # real PL2303 = big trouble in my setup, cheap chinese converter some times disconnecting, workaround is at the end of serial_command(command) function
 # differenc between SBU(POP02) and Solar First (POP01): in state POP01 inverter works only if PV_voltage <> 0 !!! SBU mode works during night
 
-# Josef Krieglstein 20190312 last update
 
-import urllib2
 import serial, time, sys, string
-import sqlite3
-import json
-import urllib
-import httplib
-import datetime
-import calendar
 import os
 import re
 import crcmod
@@ -30,29 +20,8 @@ import time
 from binascii import unhexlify
 #import binascii
 
-# Domain you want to post to: localhost would be an emoncms installation on your own laptop
-# this could be changed to emoncms.org to post to emoncms.org or your own server
-server = "....org"
-
-#connection = "serial"
-connection = "USB"
-
-# Location of emoncms in your server, the standard setup is to place it in a folder called emoncms
-# To post to emoncms.org change this to blank: ""
-emoncmspath = ""
-
-# Write apikey of emoncms account
-apikey = "..."
-
-# Node id youd like the emontx to appear as
-nodeid0 = 23
-#nodeid1 = 22
-
-mode0 = -1
-mode1 = -1
-load = 0
-wake_up_start = 0
-parrallel_num = 0
+connection = "serial"
+#connection = "USB"
 
 #Axpert Commands and examples
 #Q1		# Undocumented command: LocalInverterStatus (seconds from absorb), ParaExistInfo (seconds from end of Float), SccOkFlag, AllowSccOnFlag, ChargeAverageCurrent, SCC PWM Temperature, Inverter Temperature, Battery Temperature, Transformer Temperature, GPDAT, FanLockStatus, FanPWMDuty, FanPWM, SCCChargePowerWatts, ParaWarning, SYNFreq, InverterChargeStatus
@@ -128,218 +97,7 @@ try:
 except Exception, e:
     print "error open USB port: " + str(e)
     exit()
-
-def get_data(command,inverter):
-    #collect data from axpert inverter
-    global mode0
-    global mode1
-    global load
-    status = -1
-    global parrallel_num
-    if inverter == 0: device = usb0
-    if inverter == 1: device = usb1
-    try:
-    	data = "{"
-	if ( connection == "serial" and ser.isOpen() or connection == "USB" ):
-            response = serial_command(command,device)
-	    if "NAKss" in response or response == '':
-                if connection == "serial": time.sleep(0.2)
-            	return ''
-    	    else:
-		response_num = re.sub ('[^0-9. ]','',response)
-		if command == "QPGS0":
-            	    response.rstrip()
-            	    response_num.rstrip()
-		    nums = response_num.split(' ', 99)
-            	    nums_mode = response.split(' ', 99)
-		    if nums_mode[2] == "L":
-                	data += "Gridmode0:1"
-			data += ",Solarmode0:0"
-			mode0 = 0
-            	    elif nums_mode[2] == "B":
-                	data += "Gridmode0:0"
-                	data += ",Solarmode0:1"
-			mode0 = 1
-            	    elif nums_mode[2] == "S":
-                	data += "Gridmode0:0"
-                	data += ",Solarmode0:0"
-			mode0 = 2
-            	    elif nums_mode[2] == "F":
-                	data += "Gridmode0:0"
-                	data += ",Solarmode0:0"
-			mode0 = 3
-        
-		    data += ",The_parallel_num0:" + nums[0]
-        	    data += ",Serial_number0:" + nums[1]
-        	    data += ",Fault_code0:" + nums[3]
-        	    data += ",Load_percentage0:" + nums[10]
-        	    data += ",Total_charging_current:" + nums[15]
-        	    data += ",Total_AC_output_active_power:" + nums[17]
-        	    data += ",Total_AC_output_apparent_power:" + nums[16]
-        	    data += ",Total_AC_output_percentage:" + nums[18]
-        	    data += ",Inverter_Status0:" + nums[19]
-        	    data += ",Output_mode0:" + nums[20]
-        	    data += ",Charger_source_priority0:" + nums[21]
-        	    data += ",Max_Charger_current0:" + nums[22]
-        	    data += ",Max_Charger_range0:" + nums[23]
-        	    data += ",Max_AC_charger_current0:" + nums[24]
-		    data += ",Inverter_mode0:" + str (mode0)
-		    parrallel_num = int (nums[0])
-		    load = int (nums[17])
-
-		elif command == "QPGS1":
-            	    response.rstrip()
-		    response_num.rstrip()
-            	    nums = response_num.split(' ', 99)
-            	    nums_mode = response.split(' ', 99)
-		    if nums_mode[2] == "L":
-                	data += "Gridmode1:1"
-			data += ",Solarmode1:0"
-			mode1 = 0
-            	    elif nums_mode[2] == "B":
-                	data += "Gridmode1:0"
-                	data += ",Solarmode1:1"
-			mode1 = 1
-            	    elif nums_mode[2] == "S":
-                	data += "Gridmode1:0"
-                	data += ",Solarmode1:0"
-			mode1 = 2
-            	    elif nums_mode[2] == "F":
-                	data += "Gridmode1:0"
-                	data += ",Solarmode1:0"
-			mode1 = 3
-            
-		    data += ",The_parallel_num1:" + nums[0]
-        	    data += ",Serial_number1:" + nums[1]
-        	    data += ",Fault_code1:" + nums[3]
-        	    data += ",Load_percentage1:" + nums[10]
-        	    data += ",Total_charging_current:" + nums[15]
-        	    data += ",Total_AC_output_active_power:" + nums[17]
-        	    data += ",Total_AC_output_apparent_power:" + nums[16]
-        	    data += ",Total_AC_output_percentage:" + nums[18]
-        	    data += ",Inverter_Status1:" + nums[19]
-        	    data += ",Output_mode1:" + nums[20]
-        	    data += ",Charger_source_priority1:" + nums[21]
-        	    data += ",Max_Charger_current1:" + nums[22]
-        	    data += ",Max_Charger_range1:" + nums[23]
-        	    data += ",Max_AC_charger_current1:" + nums[24]
-		    data += ",Inverter_mode1:" + str (mode1)
-		    parrallel_num = int (nums[0])
-		    load = int (nums[17])
-
-		elif command == "QPIGS":
-        	    response_num.rstrip()
-        	    nums = response_num.split(' ', 99)
-        	    data += "Grid_voltage" + str(inverter) + ":" + nums[0]
-        	    data += ",Grid_frequency" + str(inverter) + ":" + nums[1]
-        	    data += ",AC_output_voltage" + str(inverter) + ":" + nums[2]
-        	    data += ",AC_output_frequency" + str(inverter) + ":" + nums[3]
-        	    data += ",AC_output_apparent_power" + str(inverter) + ":" + nums[4]
-        	    data += ",AC_output_active_power" + str(inverter) + ":" + nums[5]
-        	    data += ",Output_Load_Percent" + str(inverter) + ":" + nums[6]
-        	    data += ",Bus_voltage" + str(inverter) + ":" + nums[7]
-        	    data += ",Battery_voltage" + str(inverter) + ":" + nums[8]
-        	    data += ",Battery_charging_current" + str(inverter) + ":" + nums[9]
-        	    data += ",Battery_capacity" + str(inverter) + ":" + nums[10]
-        	    data += ",Inverter_heatsink_temperature" + str(inverter) + ":" + nums[11]
-        	    data += ",PV_input_current_for_battery" + str(inverter) + ":" + nums[12]
-        	    data += ",PV_Input_Voltage" + str(inverter) + ":" + nums[13]
-        	    data += ",Battery_voltage_from_SCC" + str(inverter) + ":" + nums[14]
-        	    data += ",Battery_discharge_current" + str(inverter) + ":" + nums[15]
-        	    data += ",Device_status" + str(inverter) + ":" + nums[16]
-
-		elif command == "Q1":
-        	    response_num.rstrip()
-        	    nums = response_num.split(' ', 99)
-        	    data += "SCCOkFlag" + str(inverter) + ":" + nums[2]
-        	    data += ",AllowSCCOkFlag" + str(inverter) + ":" + nums[3]
-        	    data += ",ChargeAverageCurrent" + str(inverter) + ":" + nums[4]
-        	    data += ",SCCPWMTemperature" + str(inverter) + ":" + nums[5]
-        	    data += ",InverterTemperature" + str(inverter) + ":" + nums[6]
-        	    data += ",BatteryTemperature" + str(inverter) + ":" + nums[7]
-        	    data += ",TransformerTemperature" + str(inverter) + ":" + nums[8]
-        	    data += ",GPDAT" + str(inverter) + ":" + nums[9]
-        	    data += ",FanLockStatus" + str(inverter) + ":" + nums[10]
-        	    data += ",FanPWM" + str(inverter) + ":" + nums[12]
-        	    data += ",SCCChargePower" + str(inverter) + ":" + nums[13]
-        	    data += ",ParaWarning" + str(inverter) + ":" + nums[14]
-		    data += ",InverterChargeStatus" + str(inverter) + ":" + nums[16]
-
-		elif command == "QBV":
-        	    response_num.rstrip()
-        	    nums = response_num.split(' ', 99)
-		    data += "Battery_voltage_compensated" + str(inverter) + ":" + nums[0]
-		    data += ",SoC" + str(inverter) + ":" + nums[1]
-		else: return ''
-		data += "}"
-
-    except Exception, e:
-            print "error parsing inverter data...: " + str(e)
-	    print "problem command: " + command +": " + response
-            return ''
-
-    return data
-
-def set_charge_current():
-    # Automaticly adjust axpert inverter grid charging current
-
-    # 2A = 100W, 10A = 500W, 20A = 1000W, 30 = 1500W
-    # load >3000W -> 02A
-    # load <3000W -> 10A
-    # load <2000W -> 20A
-    # load <1000W -> 30A
-
-    try:
-	if ( connection == "serial" and ser.isOpen() or connection == "USB" ):
-            current = 0
-            load_power = 0
-            response = serial_command("QPGS0",usb0)
-            if "NAKss" in response:
-		if connection == "serial": time.sleep(0.5)
-                return ''
-            response.rstrip()
-            nums = response.split(' ', 99)
-            current = int ( nums[24] )
-            response = serial_command("QPIGS",usb0)
-            if "NAKss" in response:
-		if connection == "serial": time.sleep(0.5)
-                return ''
-            response.rstrip()
-            nums = response.split(' ', 99)
-            load_power = int ( nums[5] )
-            print load_power
-            if load_power > 3000:
-                if not current == 2:
-                    current = 2
-                    response = serial_command("MUCHGC002",usb0)
-            elif load_power > 2000:
-                if not current == 10:
-                    current = 10
-                    response = serial_command("MUCHGC010",usb0)
-            elif load_power > 1000:
-                if not current == 20:
-                    current = 20
-                    response = serial_command("MUCHGC020",usb0)
-            else:
-                if not current == 30:
-                    current = 30
-                    response = serial_command("MUCHGC030",usb0)
-            print current
-            if "NAKss" in response:
-                if connection == "serial": time.sleep(0.5)
-                return ''
-
-    	elif ( connection == "serial" ):
-            ser.close()
-            print "cannot use serial port ..."
-            return ""
-
-    except Exception, e:
-            print "error parsing inverter data...: " + str(e)
-            return ''
-
-    return current
-
+    
 def get_output_source_priority():
     #get inverter output mode priority
     output_source_priority = "8"
@@ -444,35 +202,6 @@ def set_charger_source_priority(charger_source_priority):
 
         return 1
 
-def send_data(data):
-    # Send data to emoncms server
-    try:
-        conn = httplib.HTTPConnection(server)
-	conn.request("GET", "/"+emoncmspath+"/input/post.json?&node="+str(nodeid0)+"&json="+data+"&apikey="+apikey)
-        response = conn.getresponse()
-        conn.close()
-
-    except Exception as e:
-        print "error sending to emoncms...: " + str(e)
-        return ''
-    return 1
-
-def read_hdo(id):
-    # Read high/low tarif from emoncms (the acctual tarif information can be created by cron script, or from emonTX input)
-    # in Czech Republic, West Bohemia it is perriodicaly, tarif name is for example: A1B8DP5 => (8 hours of low and 16 hours of high) / each day
-    try:
-        conn = httplib.HTTPConnection(server)
-        conn.request("GET", "/"+emoncmspath+"/feed/value.json?id="+str(id)+"&apikey="+apikey)
-        response = conn.getresponse()
-        response_tmp = response.read()
-        conn.close()
-        return response_tmp
-
-    except Exception as e:
-        print "error reading from emoncms...: " + str(e)
-        return ''
-    return 1
-
 
 def serial_command(command,device):
     try:
@@ -519,93 +248,40 @@ def serial_command(command,device):
     print response
     return response
 
-def dynamic_control():
-    # Automaticly adjust axpert inverter wakeup and standby mode
-    #0:Line mode
-    #1:Battery mode
-    #2:Stand by mode
-    #3:Fault mode
-    #-1: Unknown mode
-    # load > 1800 W -> Both inverters UP
-    # load < 1500 W -> Master Running Slave in standby
-    # minimum time to run 5 minutes = 300 seconds
-    global wake_up_start
-    global mode0
-    global mode1
-    global load
-    response = " no command "
-    time_tmp = (time.time() - wake_up_start)
-    try:
-	print "Load: " + str(load) + " W, MODE: " + str (mode0) + "|"  + str(mode1) + ", time: " + str (int(time_tmp)) + " seconds"
-	if (load < 1500 and mode0 == 1 and mode1 == 1 and time_tmp > 300):
-            print "Second inverter go to standby mode"
-	    response = serial_command("MNCHGC1497",usb0)
-        elif (load < 1500 and mode0 == 1 and mode1 == 1 and time_tmp < 300):
-            print "waiting 5 minutes to be sure that inverter could go sleep"
-	elif (load > 1800 and mode0 == 1 and mode1 == 2):
-	    print "Second Inverter wake up"
-            response = serial_command("MNCHGC1498",usb0)
-	    wake_up_start = time.time()
-        elif (load < 1800 and mode0 == 1 and mode1 == 2):
-	    print "Second inverter already sleeping"
-        elif (load > 1800 and mode0 == 1 and mode1 == 1):
-	    print "Both inverters running"
-        else:
-	    print "No idea what to do"
-        if "NAKss" in response:
-	    print "Inverter didn't recognized command"
-            return
 
-    except Exception, e:
-            print "error setting inverter mode...: " + str(e)
-            return
-
-    return 1
-
-def main():
-    global mode0
-    global mode1
-    global parrallel_num
-    global wake_up_start
-    global load
-    wake_up_start = time.time()
+def main(switchMode):
     while True:
-	for inverter in range (0, 2):
-	    if (inverter == 1 and parrallel_num < 1): break
-	    data = get_data("QBV",inverter)
-    	    if not data == "": send = send_data(data)
-	    data = get_data("Q1",inverter)
-    	    if not data == "": send = send_data(data)
-	    data = get_data("QPIGS", inverter)
-    	    if not data == "": send = send_data(data)
-	    if inverter == 0:
-		data = get_data("QPGS0", inverter)
-    		if not data == "": send = send_data(data)
-	    elif inverter == 1:
-		data = get_data("QPGS1", inverter)
-    		if not data == "": send = send_data(data)
-	    if (load > 0 and mode0 >= 0 and mode1 >= 0 and parrallel_num == 1):
-		dynamic_control()
+        output_source_priority = get_output_source_priority()
+        charger_source_priority = get_charger_source_priority()
+        if not output_source_priority == "8":
+            if not charger_source_priority == "8": 
+                break
+        time.sleep(30) 
+                
+    if switchMode == "VALLE":           
+        print "Change to VALLE"  # electricity is cheap, so charge batteries from grid and hold them fully charged! important for Lead Acid Batteries Only!
+        if not output_source_priority == "0":       # Utility First (0: Utility first, 1: Solar First, 2: SBU)
+            set_output_source_priority(0)
+        if not charger_source_priority == "0":      # Utility First (0: Utility first, 1: Solar First, 2: Solar+Utility, 3: Solar Only)
+            set_charger_source_priority(2)
 
-#        charge_current = set_charge_current ()
-#        hdo_tmp_LT = read_hdo(68)       #Read emoncms feed id=68 = LowTarif
-#        hdo_tmp_HT = read_hdo(69)       #Read emoncms feed id=69 = HighTarif
-#        output_source_priority = get_output_source_priority()
-#        charger_source_priority = get_charger_source_priority()
-#        if not output_source_priority == "8":
-#            if not charger_source_priority == "8":
-#                if hdo_tmp_LT == "1":
-#                    print "LT"  # electricity is cheap, so charge batteries from grid and hold them fully charged! important for Lead Acid Batteries Only!
-#                    if not output_source_priority == "0":       # Utility First (0: Utility first, 1: Solar First, 2: SBU)
-#                        set_output_source_priority(0)
-#                    if not charger_source_priority == "2":      # Utility First (0: Utility first, 1: Solar First, 2: Solar+Utility, 3: Solar Only)
-#                        set_charger_source_priority(2)
-#                if hdo_tmp_HT == "1":
-#                    print "HT"  # electricity is expensive, so supply everything from batteries not from grid
-#                    if not output_source_priority == "2":       # Utility First (0: Utility first, 1: Solar First, 2: SBU)
-#                        set_output_source_priority(2)
-#                    if not charger_source_priority == "3":      # Utility First (0: Utility first, 1: Solar First, 2: Solar+Utility, 3: Solar Only)
-#                        set_charger_source_priority(3)
+    elif switchMode == "PICO":   
+        print "Change to PICO"  # electricity is expensive, so supply everything from batteries not from grid
+        if not output_source_priority == "2":       # Utility First (0: Utility first, 1: Solar First, 2: SBU)
+            set_output_source_priority(2)
+        if not charger_source_priority == "3":      # Utility First (0: Utility first, 1: Solar First, 2: Solar+Utility, 3: Solar Only)
+            set_charger_source_priority(3)
+
+    ser.close()
 
 if __name__ == '__main__':
-    main()
+
+    import argparse
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--switch', default='',
+                        help='Switch to PICO o VALLE mode inverter')
+    args = parser.parse_args()
+    switchMode = args.switch
+    if not switchMode == '':
+        main(switchMode)
