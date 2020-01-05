@@ -5,6 +5,7 @@ import os
 import re
 import crcmod
 from binascii import unhexlify
+from datetime import datetime
 
 #Commands with CRC cheats
 #QPI            # Device protocol ID inquiry
@@ -77,6 +78,11 @@ except Exception, e:
     exit()
 
 try:
+    # datetime object containing current date and time
+    now = datetime.now()
+    dt_string = now.strftime("%d/%m/%Y %H:%M:%S")
+    print "RUN =", dt_string
+
     ser.flushInput()            #flush input buffer, discarding all its contents
     ser.flushOutput()           #flush output buffer, aborting current output and discard all that is in buffer
     command = "POP00"           #supply form SBU
