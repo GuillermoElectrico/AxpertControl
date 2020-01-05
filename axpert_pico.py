@@ -78,7 +78,7 @@ except Exception, e:
 try:
     ser.flushInput()            #flush input buffer, discarding all its contents
     ser.flushOutput()           #flush output buffer, aborting current output and discard all that is in buffer
-    command = "POP02"
+    command = "POP02"           #supply form Utility first
     print command
     xmodem_crc_func = crcmod.predefined.mkCrcFun('xmodem')
 #    print hex(xmodem_crc_func(command))
@@ -98,7 +98,7 @@ try:
     
     ser.flushInput()            #flush input buffer, discarding all its contents
     ser.flushOutput()           #flush output buffer, aborting current output and discard all that is in buffer
-    command = "PCP03"
+    command = "PCP03"           #charge batteries Solar Only
     print command
     xmodem_crc_func = crcmod.predefined.mkCrcFun('xmodem')
 #    print hex(xmodem_crc_func(command))
