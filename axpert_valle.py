@@ -57,6 +57,7 @@ from binascii import unhexlify
 
 ser = serial.Serial()
 ser.port = "/dev/ttyUSB0"
+#ser.port = "/dev/serial/by-id/usb-Prolific_Technology_Inc._USB-Serial_Controller-if00-port0"
 ser.baudrate = 2400
 ser.bytesize = serial.EIGHTBITS     #number of bits per bytes
 ser.parity = serial.PARITY_NONE     #set parity check: no parity
