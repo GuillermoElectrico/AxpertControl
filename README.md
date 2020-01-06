@@ -14,8 +14,13 @@ testing script wiht CRC, commands, ...�
 
 Crontab example:
 
-*/15 0-12,22,23 * * * /home/pi/AxpertControl/axpert_valle.py >/dev/null 2>&1
+*/15 0-11,22,23 * * * /home/pi/AxpertControl/axpert_valle.py >/dev/null 2>&1
 
 */15 12-21 * * * /home/pi/AxpertControl/axpert_pico.py >/dev/null 2>&1
 
 Tested and running in PIP-5048MK 
+
+If the error appears, use dos2unix to fix it.
+
+ $ sudo apt install dos2unix
+ $ dos2unix /PATH/TO/YOUR/FILE
