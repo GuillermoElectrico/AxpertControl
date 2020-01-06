@@ -57,8 +57,7 @@ from datetime import datetime
 #PPCP002        # Setting parallel device charger priority: OnlySolarCharging - nefunguje
 
 ser = serial.Serial()
-ser.port = "/dev/ttyUSB0"
-#ser.port = "/dev/serial/by-id/usb-Prolific_Technology_Inc._USB-Serial_Controller-if00-port0"
+ser.port = "/dev/serial/by-id/usb-Prolific_Technology_Inc._USB-Serial_Controller-if00-port0"
 ser.baudrate = 2400
 ser.bytesize = serial.EIGHTBITS     #number of bits per bytes
 ser.parity = serial.PARITY_NONE     #set parity check: no parity
@@ -82,43 +81,62 @@ try:
     now = datetime.now()
     dt_string = now.strftime("%d/%m/%Y %H:%M:%S")
     print "RUN =", dt_string
-
+    
+    # obtain actual information inverter
     ser.flushInput()            #flush input buffer, discarding all its contents
     ser.flushOutput()           #flush output buffer, aborting current output and discard all that is in buffer
-    command = "POP00"           #supply form SBU
+    command = "QPIRI"           
     print command
     xmodem_crc_func = crcmod.predefined.mkCrcFun('xmodem')
-#    print hex(xmodem_crc_func(command))
-#    print hex(xmodem_crc_func(command)).replace("0x","",1)
     command_crc = command + unhexlify(hex(xmodem_crc_func(command)).replace('0x','',1)) + '\x0d'
-#    print command_crc
-
-#    command_crc = '\x50\x4f\x50\x30\x32\xe2\x0b\x0d'
     ser.write(command_crc)
     response = ser.readline()
     print response
-#    response_hex = ':'.join(hex(ord(x))[2:] for x in response)
-#    print response_hex
+    if "NAKss" in response:
+        print "error serial port (NAKss)"
+        exit()
+    response.rstrip()
+    nums = response.split(' ', 99)
+    output_source_priority = nums[16]
+    charger_source_priority = nums[17] 
+    print "Output mode (0: Utility first, 1: Solar First, 2: SBU)"
+    print output_source_priority
+    print "Charge mode (0: Utility first, 1: Solar First, 2: Solar+Utility, 3: Solar Only)"
+    print charger_source_priority
+        
+    # if information if different to config
     
-    print "Delay 10 second"
-    time.sleep(10)
+    #inverter output mode priority -> Utility first
+    if not output_source_priority == "0":       # 0: Utility first, 1: Solar First, 2: SBU
+        ser.flushInput()            #flush input buffer, discarding all its contents
+        ser.flushOutput()           #flush output buffer, aborting current output and discard all that is in buffer
+        command = "POP00"           # Set to UTILITY  
+        print command
+        xmodem_crc_func = crcmod.predefined.mkCrcFun('xmodem')
+        command_crc = command + unhexlify(hex(xmodem_crc_func(command)).replace('0x','',1)) + '\x0d'
+        ser.write(command_crc)
+        response = ser.readline()
+        print response
     
-    ser.flushInput()            #flush input buffer, discarding all its contents
-    ser.flushOutput()           #flush output buffer, aborting current output and discard all that is in buffer
-    command = "PCP00"           #charge batteries Utility first
-    print command
-    xmodem_crc_func = crcmod.predefined.mkCrcFun('xmodem')
-#    print hex(xmodem_crc_func(command))
-#    print hex(xmodem_crc_func(command)).replace("0x","",1)
-    command_crc = command + unhexlify(hex(xmodem_crc_func(command)).replace('0x','',1)) + '\x0d'
-#    print command_crc
-
-#    command_crc = '\x50\x4f\x50\x30\x32\xe2\x0b\x0d'
-    ser.write(command_crc)
-    response = ser.readline()
-    print response
-#    response_hex = ':'.join(hex(ord(x))[2:] for x in response)
-#    print response_hex
+        #delay time
+        print "Delay 10 second"
+        time.sleep(10)
+    else:
+        print "Output mode no change"
+    
+    #inverter charger mode priority -> Utility first
+    if not charger_source_priority == "0":      # 0: Utility first, 1: Solar First, 2: Solar+Utility, 3: Solar Only
+        ser.flushInput()            #flush input buffer, discarding all its contents
+        ser.flushOutput()           #flush output buffer, aborting current output and discard all that is in buffer
+        command = "PCP00"           # Setting device charger priority: Utility First    
+        print command
+        xmodem_crc_func = crcmod.predefined.mkCrcFun('xmodem')
+        command_crc = command + unhexlify(hex(xmodem_crc_func(command)).replace('0x','',1)) + '\x0d'
+        ser.write(command_crc)
+        response = ser.readline()
+        print response
+    else:
+        print "Charger mode no change"
     
     ser.close()
 
