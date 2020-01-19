@@ -4,6 +4,7 @@ import serial, time, sys, string
 import os
 import re
 import crcmod
+import telegram       #python-telegram-bot
 from binascii import unhexlify
 from datetime import datetime
 
@@ -70,11 +71,24 @@ ser.rtscts = False                  #disable hardware (RTS/CTS) flow control
 ser.dsrdtr = False                  #disable hardware (DSR/DTR) flow control
 ser.writeTimeout = 2                #timeout for write
 
+#token that can be generated talking with @BotFather on telegram
+token = ""
+bot = telegram.Bot(token=token)
+"""
+Send a mensage to a telegram user specified on chatId
+chat_id must be a number! 
+use @userinfobot to obtain yout userID from a private conversation
+"""
+chat_id=""
+
 try:
     ser.open()
 
 except Exception, e:
-    print "error open serial port: " + str(e)
+    text = "error open serial port: " + str(e)
+    print text
+    if token != "":
+        bot.sendMessage(chat_id=chat_id, text=text)
     exit()
 
 try:
@@ -142,5 +156,8 @@ try:
     ser.close()
 
 except Exception, e:
-    print "error reading inverter...: " + str(e)
+    text = "error reading inverter...: " + str(e)
+    print text
+    if token != "":
+        bot.sendMessage(chat_id=chat_id, text=text)
     exit()
