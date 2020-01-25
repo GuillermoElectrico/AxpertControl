@@ -1,6 +1,6 @@
 #! /usr/bin/python
 
-import serial, time, sys, string
+import serial, time, sys, string   #pyserial
 import os
 import re
 import crcmod
@@ -73,7 +73,8 @@ ser.writeTimeout = 2                #timeout for write
 
 #token that can be generated talking with @BotFather on telegram
 token = ""
-bot = telegram.Bot(token=token)
+if token != "":
+    bot = telegram.Bot(token=token)
 """
 Send a mensage to a telegram user specified on chatId
 chat_id must be a number! 
