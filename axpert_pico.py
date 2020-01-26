@@ -1,10 +1,10 @@
-#! /usr/bin/python
+#!/usr/bin/env python3
 
-import serial, time, sys, string  #pyserial
+import serial, time, sys, string     # pip3 install pyserial
 import os
 import re
 import crcmod
-import telegram       #python-telegram-bot
+import telegram                      #  pip3 install python-telegram-bot
 from binascii import unhexlify
 from datetime import datetime
 
@@ -58,8 +58,8 @@ from datetime import datetime
 #PPCP002        # Setting parallel device charger priority: OnlySolarCharging - nefunguje
 
 ser = serial.Serial()
-ser.port = "/dev/ttyUSB0"
-#ser.port = "/dev/serial/by-id/usb-Prolific_Technology_Inc._USB-Serial_Controller-if00-port0"
+#ser.port = "/dev/ttyUSB0"
+ser.port = "/dev/serial/by-id/usb-Prolific_Technology_Inc._USB-Serial_Controller-if00-port0"
 ser.baudrate = 2400
 ser.bytesize = serial.EIGHTBITS     #number of bits per bytes
 ser.parity = serial.PARITY_NONE     #set parity check: no parity
@@ -85,9 +85,9 @@ chat_id=""
 try:
     ser.open()
 
-except Exception, e:
+except Exception as e:
     text = "error open serial port: " + str(e)
-    print text
+    print (text)
     if token != "":
         bot.sendMessage(chat_id=chat_id, text=text)
     exit()
@@ -96,69 +96,71 @@ try:
     # datetime object containing current date and time
     now = datetime.now()
     dt_string = now.strftime("%d/%m/%Y %H:%M:%S")
-    print "RUN =", dt_string
-    
+    print ("RUN =", dt_string)
+
     # obtain actual information inverter
     ser.flushInput()            #flush input buffer, discarding all its contents
     ser.flushOutput()           #flush output buffer, aborting current output and discard all that is in buffer
     command = "QPIRI"           
-    print command
+    print (command)
     xmodem_crc_func = crcmod.predefined.mkCrcFun('xmodem')
-    command_crc = command + unhexlify(hex(xmodem_crc_func(command)).replace('0x','',1)) + '\x0d'
-    ser.write(command_crc)
+    command_crc = command + (unhexlify(hex(xmodem_crc_func(command.encode('utf-8'))).replace('0x','',1))).decode('utf-8', 'ignore') + '\x0d'
+    ser.write(command_crc.encode())
     response = ser.readline()
-    print response
-    if "NAKss" in response:
-        print "error serial port (NAKss)"
+    print (response)
+
+    if b"NAKss" in response:
+        print ("error serial port (NAKss)")
         exit()
+
     response.rstrip()
-    nums = response.split(' ', 99)
+    nums = response.split(b' ', 99)
     output_source_priority = nums[16]
     charger_source_priority = nums[17] 
-    print "Output mode (0: Utility first, 1: Solar First, 2: SBU)"
-    print output_source_priority
-    print "Charge mode (0: Utility first, 1: Solar First, 2: Solar+Utility, 3: Solar Only)"
-    print charger_source_priority
+    print ("Output mode (0: Utility first, 1: Solar First, 2: SBU)")
+    print (output_source_priority.decode())
+    print ("Charge mode (0: Utility first, 1: Solar First, 2: Solar+Utility, 3: Solar Only)")
+    print (charger_source_priority.decode())
         
     # if information if different to config
-    
+
     #inverter output mode priority -> SBU
-    if not output_source_priority == "2":       # 0: Utility first, 1: Solar First, 2: SBU
+    if not output_source_priority == b"2":       # 0: Utility first, 1: Solar First, 2: SBU
         ser.flushInput()            #flush input buffer, discarding all its contents
         ser.flushOutput()           #flush output buffer, aborting current output and discard all that is in buffer
-        command = "POP02"           # Set to SBU  
-        print command
+        command = "POP02"           # Set to SBU   
+        print (command)
         xmodem_crc_func = crcmod.predefined.mkCrcFun('xmodem')
-        command_crc = command + unhexlify(hex(xmodem_crc_func(command)).replace('0x','',1)) + '\x0d'
-        ser.write(command_crc)
+        command_crc = command + (unhexlify(hex(xmodem_crc_func(command.encode('utf-8'))).replace('0x','',1))).decode('utf-8', 'ignore') + '\x0d'
+        ser.write(command_crc.encode())
         response = ser.readline()
-        print response
-    
+        print (response)
+
         #delay time
-        print "Delay 10 second"
+        print ("Delay 10 second")
         time.sleep(10)
     else:
-        print "Output mode no change"
-    
+        print ("Output mode no change")
+
     #inverter charger mode priority -> Solar Only
-    if not charger_source_priority == "3":      # 0: Utility first, 1: Solar First, 2: Solar+Utility, 3: Solar Only
+    if not charger_source_priority == b"3":      # 0: Utility first, 1: Solar First, 2: Solar+Utility, 3: Solar Only
         ser.flushInput()            #flush input buffer, discarding all its contents
         ser.flushOutput()           #flush output buffer, aborting current output and discard all that is in buffer
-        command = "PCP03"           # Setting device charger priority: Solar Only   
-        print command
+        command = "PCP03"           # Setting device charger priority: Utility First    
+        print (command)
         xmodem_crc_func = crcmod.predefined.mkCrcFun('xmodem')
-        command_crc = command + unhexlify(hex(xmodem_crc_func(command)).replace('0x','',1)) + '\x0d'
-        ser.write(command_crc)
+        command_crc = command + (unhexlify(hex(xmodem_crc_func(command.encode('utf-8'))).replace('0x','',1))).decode('utf-8', 'ignore') + '\x0d'
+        ser.write(command_crc.encode())
         response = ser.readline()
-        print response
+        print (response)
     else:
-        print "Charger mode no change"
-    
+        print ("Charger mode no change")
+
     ser.close()
 
-except Exception, e:
+except Exception as e:
     text = "error reading inverter...: " + str(e)
-    print text
+    print (text)
     if token != "":
         bot.sendMessage(chat_id=chat_id, text=text)
     exit()

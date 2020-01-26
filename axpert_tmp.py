@@ -1,6 +1,6 @@
-#! /usr/bin/python
+#!/usr/bin/env python3
 
-import serial, time, sys, string
+import serial, time, sys, string     # pip3 install pyserial
 import os
 import re
 import crcmod
@@ -56,8 +56,8 @@ from binascii import unhexlify
 #PPCP002        # Setting parallel device charger priority: OnlySolarCharging - nefunguje
 
 ser = serial.Serial()
-ser.port = "/dev/ttyUSB0"
-#ser.port = "/dev/serial/by-id/usb-Prolific_Technology_Inc._USB-Serial_Controller-if00-port0"
+#ser.port = "/dev/ttyUSB0"
+ser.port = "/dev/serial/by-id/usb-Prolific_Technology_Inc._USB-Serial_Controller-if00-port0"
 ser.baudrate = 2400
 ser.bytesize = serial.EIGHTBITS     #number of bits per bytes
 ser.parity = serial.PARITY_NONE     #set parity check: no parity
@@ -72,29 +72,29 @@ ser.writeTimeout = 2                #timeout for write
 try:
     ser.open()
 
-except Exception, e:
-    print "error open serial port: " + str(e)
+except Exception as e:
+    print ("error open serial port: " + str(e))
     exit()
 
 try:
     ser.flushInput()            #flush input buffer, discarding all its contents
     ser.flushOutput()           #flush output buffer, aborting current output and discard all that is in buffer
-    command = "POP0088"
-    print command
+    command = "QPIRI"
+    print (command)
     xmodem_crc_func = crcmod.predefined.mkCrcFun('xmodem')
-    print hex(xmodem_crc_func(command))
-    print hex(xmodem_crc_func(command)).replace("0x","",1)
-    command_crc = command + unhexlify(hex(xmodem_crc_func(command)).replace('0x','',1)) + '\x0d'
-    print command_crc
+    print (hex(xmodem_crc_func(command.encode('utf-8'))))
+    print (hex(xmodem_crc_func(command.encode('utf-8'))).replace("0x","",1))
+    command_crc = command + (unhexlify(hex(xmodem_crc_func(command.encode('utf-8'))).replace('0x','',1))).decode('utf-8', 'ignore') + '\x0d'
+    print (command_crc.encode())
 
-#    command_crc = '\x50\x4f\x50\x30\x32\xe2\x0b\x0d'
-    ser.write(command_crc)
+    #    command_crc = '\x50\x4f\x50\x30\x32\xe2\x0b\x0d'
+    ser.write(command_crc.encode())
     response = ser.readline()
-    print response
-    response_hex = ':'.join(hex(ord(x))[2:] for x in response)
-    print response_hex
+    print (response)
+    response_hex = ':'.join(hex(ord(x))[2:] for x in response.decode('utf-8', 'ignore'))
+    print (response_hex)
     ser.close()
 
-except Exception, e:
-    print "error reading inverter...: " + str(e)
+except Exception as e:
+    print ("error reading inverter...: " + str(e))
     exit()

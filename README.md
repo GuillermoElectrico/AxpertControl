@@ -24,3 +24,5 @@ If the error appears, use dos2unix to fix it.
 
  $ sudo apt install dos2unix
  $ dos2unix /PATH/TO/YOUR/FILE
+
+26/01/2020 - Migrate code to Python 3
