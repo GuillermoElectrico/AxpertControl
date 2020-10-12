@@ -25,4 +25,23 @@ If the error appears, use dos2unix to fix it.
  $ sudo apt install dos2unix
  $ dos2unix /PATH/TO/YOUR/FILE
 
+Example to spain tarif:
+
+# For more information see the manual pages of crontab(5) and cron(8)
+#
+# m h  dom mon dow   command
+
+# Horario Verano:
+
+*/15 0-12,23 * * * /home/pi/AxpertControl/axpert_valle.py >/dev/null 2>&1
+
+*/15 13-22 * * * /home/pi/AxpertControl/axpert_pico.py >/dev/null 2>&1
+
+# Horario Invierno:
+
+#*/15 0-11,22,23 * * * /home/pi/AxpertControl/axpert_valle.py >/dev/null 2>&1
+
+#*/15 12-21 * * * /home/pi/AxpertControl/axpert_pico.py >/dev/null 2>&1
+
+
 26/01/2020 - Migrate code to Python 3
