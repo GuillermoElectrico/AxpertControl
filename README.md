@@ -43,5 +43,13 @@ Example to spain tarif:
 
 #*/15 12-21 * * * /home/pi/AxpertControl/axpert_pico.py >/dev/null 2>&1
 
+# Actualización (31/01/2021)
+# ¡¡¡ Ejemplo crontab para la nueva tarifa 2.0TD en españa !!! https://selectra.es/energia/info/que-es/tarifa-20-td
+
+*/15 0-7 * * 1-5 /home/pi/AxpertControl/axpert_valle.py >/dev/null 2>&1
+
+*/15 8-23 * * 1-5 /home/pi/AxpertControl/axpert_pico.py >/dev/null 2>&1
+
+*/15 * * * 6,0 /home/pi/AxpertControl/axpert_valle.py >/dev/null 2>&1
 
 26/01/2020 - Migrate code to Python 3
