@@ -44,7 +44,7 @@ Example to spain tarif:
 #*/15 12-21 * * * /home/pi/AxpertControl/axpert_pico.py >/dev/null 2>&1
 
 # Actualización (31/01/2021)
-# ¡¡¡ Ejemplo crontab para la nueva tarifa 2.0TD en españa !!! https://selectra.es/energia/info/que-es/tarifa-20-td
+# ¡¡¡ Ejemplo crontab para la nueva tarifa 2.0TD en españa !!! https://comparadorluz.com/tarifas/acceso
 
 */15 0-7 * * 1-5 /home/pi/AxpertControl/axpert_valle.py >/dev/null 2>&1
 
